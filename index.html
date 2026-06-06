@@ -1,100 +1,476 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Notion Carousel</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion Fluid Carousel</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons for premium UI look -->
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 12px; }
-    .carousel { position: relative; overflow: hidden; border-radius: 12px; background:#111; }
-    .carousel-slide { display: flex; transition: transform .35s ease; }
-    .carousel-slide img { width: 100%; flex: 0 0 100%; object-fit: cover; aspect-ratio: 16/9; }
-    .btn {
-      position:absolute; top:50%; transform: translateY(-50%);
-      border:0; background: rgba(255,255,255,.85); padding:10px 12px;
-      cursor:pointer; border-radius: 999px;
+    /* 스크롤바 숨기기 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
     }
-    #prevBtn { left:10px; }
-    #nextBtn { right:10px; }
-    .dots { display:flex; gap:6px; justify-content:center; padding:10px 0; }
-    .dot { width:8px; height:8px; border-radius:50%; background:#ccc; opacity:.5; cursor:pointer; }
-    .dot.active { opacity:1; background:#333; }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* 하이라이트 방지 */
+    .no-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="carousel">
-      <div class="carousel-slide">
-        <img src="IMAGE_URL_1" alt="slide 1">
-        <img src="IMAGE_URL_2" alt="slide 2">
-        <img src="IMAGE_URL_3" alt="slide 3">
-        <img src="IMAGE_URL_4" alt="slide 4">
-        <img src="IMAGE_URL_5" alt="slide 5">
-      </div>
-      <button class="btn" id="prevBtn">‹</button>
-      <button class="btn" id="nextBtn">›</button>
+<body class="bg-transparent m-0 p-0 overflow-hidden font-sans no-select">
+
+  <!-- 메인 컨테이너 (부모 크기에 맞춰 유연하게 조절됨) -->
+  <div id="carousel-container" class="relative w-full max-w-full mx-auto group overflow-hidden rounded-xl bg-neutral-50 border border-neutral-200/80 shadow-sm" style="aspect-ratio: 16 / 9;">
+    
+    <!-- 슬라이드 트랙 -->
+    <div id="carousel-track" class="flex w-full h-full transition-transform duration-500 ease-out-quad will-change-transform" style="transform: translateX(0%);">
+      <!-- 동적으로 슬라이드가 채워집니다 -->
     </div>
-    <div class="dots" id="dots"></div>
+
+    <!-- 좌측 컨트롤 버튼 -->
+    <button id="prev-btn" class="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-neutral-800 p-2 rounded-full shadow-md backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 z-10" aria-label="이전 이미지">
+      <i data-lucide="chevron-left" class="w-5 h-5"></i>
+    </button>
+
+    <!-- 우측 컨트롤 버튼 -->
+    <button id="next-btn" class="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-neutral-800 p-2 rounded-full shadow-md backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 z-10" aria-label="다음 이미지">
+      <i data-lucide="chevron-right" class="w-5 h-5"></i>
+    </button>
+
+    <!-- 하단 도트(인디케이터) 및 컨트롤러 바 -->
+    <div class="absolute bottom-3 left-1/2 -translate-y-0 -translate-x-1/2 flex items-center gap-3 bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors duration-300 z-10">
+      <!-- 재생/일시정지 토글 -->
+      <button id="play-pause-btn" class="text-white hover:text-neutral-200 transition-colors focus:outline-none" aria-label="자동 재생 토글">
+        <i id="play-icon" data-lucide="pause" class="w-4 h-4"></i>
+      </button>
+      
+      <!-- 도트 표시부 -->
+      <div id="dots-container" class="flex items-center gap-1.5">
+        <!-- 동적으로 도트 생성 -->
+      </div>
+    </div>
+
+    <!-- 설정 버튼 (노션 임베드 내에서 이미지를 바로 바꿀 수 있게 제공) -->
+    <button id="settings-btn" class="absolute top-3 right-3 bg-white/80 hover:bg-white text-neutral-700 p-2 rounded-full shadow-md backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 z-10" title="이미지 설정">
+      <i data-lucide="settings" class="w-4 h-4"></i>
+    </button>
+
+    <!-- 이미지 링크 설정 레이어 (기본적으로 숨김) -->
+    <div id="settings-panel" class="absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col p-4 transition-all duration-300 transform translate-y-full overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b border-neutral-100">
+        <h2 class="text-sm font-semibold text-neutral-800 flex items-center gap-1.5">
+          <i data-lucide="image" class="w-4 h-4 text-indigo-500"></i> 캐러셀 이미지 설정
+        </h2>
+        <button id="close-settings-btn" class="text-neutral-500 hover:text-neutral-800 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 기본 입력 창 -->
+      <div class="space-y-3 flex-1">
+        <div>
+          <label class="block text-xs font-medium text-neutral-500 mb-1">비율 설정</label>
+          <select id="aspect-ratio-select" class="w-full text-xs border border-neutral-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white">
+            <option value="16/9">기본 와이드 (16:9)</option>
+            <option value="4/3">클래식 박스 (4:3)</option>
+            <option value="21/9">시네마틱 (21:9)</option>
+            <option value="1/1">정사각형 (1:1)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-neutral-500 mb-1">이미지 리스트 (URL 입력)</label>
+          <div id="image-url-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <!-- 동적으로 리스트 생성 -->
+          </div>
+          <button id="add-image-btn" class="mt-2 w-full py-1.5 border border-dashed border-indigo-400 text-indigo-600 rounded text-xs font-semibold hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> 이미지 추가하기
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-neutral-100 mt-4 flex gap-2">
+        <button id="reset-btn" class="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold rounded transition-colors">
+          초기화
+        </button>
+        <button id="save-btn" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded transition-colors shadow-sm shadow-indigo-100">
+          저장 적용
+        </button>
+      </div>
+    </div>
   </div>
 
   <script>
-    const slideContainer = document.querySelector('.carousel-slide');
-    const slideImages = document.querySelectorAll('.carousel-slide img');
-    const prevBtn = document.querySelector('#prevBtn');
-    const nextBtn = document.querySelector('#nextBtn');
+    // 샘플 데모 이미지
+    const DEFAULT_IMAGES = [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80"
+    ];
 
-    let counter = 0;
+    let images = [...DEFAULT_IMAGES];
+    let currentIndex = 0;
+    let autoPlayInterval = null;
+    let isPlaying = true;
+    const playDelay = 4000; // 4초
 
-    function getSize() {
-      return slideImages[0].clientWidth;
+    // 로컬 스토리지 키
+    const STORAGE_KEY_IMAGES = 'notion_carousel_images_v1';
+    const STORAGE_KEY_RATIO = 'notion_carousel_ratio_v1';
+
+    // DOM 요소들
+    const container = document.getElementById('carousel-container');
+    const track = document.getElementById('carousel-track');
+    const dotsContainer = document.getElementById('dots-container');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const playIcon = document.getElementById('play-icon');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const imageUrlList = document.getElementById('image-url-list');
+    const addImageBtn = document.getElementById('add-image-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const aspectRatioSelect = document.getElementById('aspect-ratio-select');
+
+    // 초기 데이터 로드
+    function init() {
+      const storedImages = localStorage.getItem(STORAGE_KEY_IMAGES);
+      if (storedImages) {
+        try {
+          images = JSON.parse(storedImages);
+        } catch(e) {
+          images = [...DEFAULT_IMAGES];
+        }
+      }
+      
+      const storedRatio = localStorage.getItem(STORAGE_KEY_RATIO);
+      if (storedRatio) {
+        container.style.aspectRatio = storedRatio.replace(':', ' / ');
+        aspectRatioSelect.value = storedRatio;
+      }
+
+      renderCarousel();
+      startAutoPlay();
+      lucide.createIcons();
     }
 
-    // dots 생성
-    const dotsEl = document.querySelector('#dots');
-    slideImages.forEach((_, i) => {
-      const d = document.createElement('div');
-      d.className = 'dot' + (i === 0 ? ' active' : '');
-      d.addEventListener('click', () => goTo(i));
-      dotsEl.appendChild(d);
+    // 캐러셀 UI 렌더링
+    function renderCarousel() {
+      // 슬라이드 트랙 비우기
+      track.innerHTML = '';
+      dotsContainer.innerHTML = '';
+
+      if (images.length === 0) {
+        // 이미지 없을 시 안내 슬라이드
+        const emptySlide = document.createElement('div');
+        emptySlide.className = 'w-full h-full flex-shrink-0 flex flex-col items-center justify-center bg-neutral-100 text-neutral-400 p-4';
+        emptySlide.innerHTML = `
+          <i data-lucide="image-off" class="w-12 h-12 mb-2"></i>
+          <p class="text-sm">등록된 이미지가 없습니다.</p>
+          <span class="text-xs text-neutral-400 mt-1">우측 상단 설정을 눌러 이미지를 추가해보세요!</span>
+        `;
+        track.appendChild(emptySlide);
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        playPauseBtn.style.display = 'none';
+        return;
+      }
+
+      prevBtn.style.display = 'block';
+      nextBtn.style.display = 'block';
+      playPauseBtn.style.display = 'block';
+
+      // 이미지 슬라이드 생성
+      images.forEach((url, index) => {
+        const slide = document.createElement('div');
+        slide.className = 'w-full h-full flex-shrink-0 relative';
+        
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `Slide ${index + 1}`;
+        img.className = 'w-full h-full object-cover select-none pointer-events-none';
+        
+        // 이미지 로딩 실패 대비 fallback 처리
+        img.onerror = () => {
+          img.src = 'https://images.unsplash.com/photo-1594322436404-5a0526db4d13?auto=format&fit=crop&w=1200&q=80';
+          const badge = document.createElement('div');
+          badge.className = 'absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-xs p-2 text-center';
+          badge.innerHTML = `
+            <p class="font-semibold text-amber-400">이미지 로드 실패</p>
+            <p class="text-neutral-300 mt-1">올바른 이미지 주소인지 확인해 주세요.</p>
+          `;
+          slide.appendChild(badge);
+        };
+
+        slide.appendChild(img);
+        track.appendChild(slide);
+
+        // 도트 버튼 생성
+        const dot = document.createElement('button');
+        dot.className = `w-1.5 h-1.5 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/80'}`;
+        dot.addEventListener('click', () => {
+          goToSlide(index);
+          resetAutoPlay();
+        });
+        dotsContainer.appendChild(dot);
+      });
+
+      updateTrackPosition();
+      lucide.createIcons();
+    }
+
+    // 슬라이드 이동 핵심 로직
+    function updateTrackPosition() {
+      track.style.transform = `translateX(-${currentIndex * 100}%)`;
+      
+      // 도트 활성화 상태 변경
+      const dots = dotsContainer.children;
+      for (let i = 0; i < dots.length; i++) {
+        if (i === currentIndex) {
+          dots[i].className = 'w-1.5 h-1.5 rounded-full transition-all duration-300 bg-white w-4';
+        } else {
+          dots[i].className = 'w-1.5 h-1.5 rounded-full transition-all duration-300 bg-white/50 hover:bg-white/80';
+        }
+      }
+    }
+
+    function goToSlide(index) {
+      if (images.length === 0) return;
+      // 인덱스 바운더리 체크
+      if (index >= images.length) {
+        currentIndex = 0;
+      } else if (index < 0) {
+        currentIndex = images.length - 1;
+      } else {
+        currentIndex = index;
+      }
+      updateTrackPosition();
+    }
+
+    function nextSlide() {
+      goToSlide(currentIndex + 1);
+    }
+
+    function prevSlide() {
+      goToSlide(currentIndex - 1);
+    }
+
+    // 오토플레이 관리
+    function startAutoPlay() {
+      if (images.length <= 1) return;
+      if (autoPlayInterval) clearInterval(autoPlayInterval);
+      
+      if (isPlaying) {
+        autoPlayInterval = setInterval(nextSlide, playDelay);
+      }
+    }
+
+    function stopAutoPlay() {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+      }
+    }
+
+    function resetAutoPlay() {
+      if (isPlaying) {
+        stopAutoPlay();
+        startAutoPlay();
+      }
+    }
+
+    // 재생/일시정지 토글
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        playIcon.setAttribute('data-lucide', 'pause');
+        startAutoPlay();
+      } else {
+        playIcon.setAttribute('data-lucide', 'play');
+        stopAutoPlay();
+      }
+      lucide.createIcons();
+    }
+
+    // 드래그 & 스와이프 기능 (Touch + Mouse 지원)
+    let isDragging = false;
+    let startX = 0;
+    let currentTranslate = 0;
+    let prevTranslate = 0;
+
+    track.addEventListener('mousedown', startDrag);
+    track.addEventListener('touchstart', startDrag, { passive: true });
+    
+    window.addEventListener('mousemove', drag);
+    window.addEventListener('touchmove', drag, { passive: true });
+    
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchend', endDrag);
+
+    function getPositionX(event) {
+      return event.type.includes('mouse') ? event.pageX : event.touches[0].clientX;
+    }
+
+    function startDrag(event) {
+      if (images.length <= 1) return;
+      isDragging = true;
+      startX = getPositionX(event);
+      stopAutoPlay();
+      track.style.transition = 'none'; // 드래그 중에는 애니메이션 제거
+    }
+
+    function drag(event) {
+      if (!isDragging) return;
+      const currentX = getPositionX(event);
+      const diff = currentX - startX;
+      
+      // 트랙 실제 위치 계산 후 움직임 반영
+      const width = container.offsetWidth;
+      const basePercent = -currentIndex * 100;
+      const dragPercent = (diff / width) * 100;
+      
+      track.style.transform = `translateX(${basePercent + dragPercent}%)`;
+    }
+
+    function endDrag(event) {
+      if (!isDragging) return;
+      isDragging = false;
+      track.style.transition = 'transform 500s ease-out'; // 트랜지션 원복 (실제로는 CSS 클래스로 작동)
+      track.className = 'flex w-full h-full transition-transform duration-500 ease-out-quad will-change-transform';
+
+      const width = container.offsetWidth;
+      // 드래그 마친 순간의 이동 방향 감지
+      const endX = event.type.includes('key') ? 0 : (event.changedTouches ? event.changedTouches[0].clientX : event.pageX);
+      const diff = endX - startX;
+
+      // 최소 50px 이상 쓸었을 때만 페이지 넘김 처리
+      if (diff < -50) {
+        nextSlide();
+      } else if (diff > 50) {
+        prevSlide();
+      } else {
+        updateTrackPosition();
+      }
+      
+      startAutoPlay();
+    }
+
+    // 이벤트 리스너 바인딩
+    prevBtn.addEventListener('click', () => { prevSlide(); resetAutoPlay(); });
+    nextBtn.addEventListener('click', () => { nextSlide(); resetAutoPlay(); });
+    playPauseBtn.addEventListener('click', togglePlay);
+
+    // 설정창 토글
+    settingsBtn.addEventListener('click', () => {
+      settingsPanel.classList.remove('translate-y-full');
+      renderSettingsList();
     });
-    function updateDots() {
-      [...dotsEl.children].forEach((d, i) => d.classList.toggle('active', i === counter));
-    }
 
-    function render() {
-      const size = getSize();
-      slideContainer.style.transform = 'translateX(' + (-size * counter) + 'px)';
-      updateDots();
-    }
-
-    function goTo(i) {
-      counter = Math.max(0, Math.min(i, slideImages.length - 1));
-      render();
-    }
-
-    nextBtn.addEventListener('click', () => {
-      if (counter >= slideImages.length - 1) return;
-      counter++;
-      render();
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsPanel.classList.add('translate-y-full');
     });
 
-    prevBtn.addEventListener('click', () => {
-      if (counter <= 0) return;
-      counter--;
-      render();
+    // 설정 리스트 생성
+    function renderSettingsList() {
+      imageUrlList.innerHTML = '';
+      images.forEach((url, index) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-2 bg-neutral-50 border border-neutral-200 p-1.5 rounded';
+        item.innerHTML = `
+          <input type="text" value="${url}" class="image-input flex-1 text-xs px-2 py-1 border border-neutral-300 rounded focus:outline-none focus:border-indigo-500" placeholder="https://image-url.com/example.jpg">
+          <button class="delete-img-btn text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50" data-index="${index}">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        `;
+        imageUrlList.appendChild(item);
+      });
+
+      // 삭제 이벤트 달기
+      document.querySelectorAll('.delete-img-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(btn.getAttribute('data-index'));
+          images.splice(idx, 1);
+          renderSettingsList();
+        });
+      });
+
+      lucide.createIcons();
+    }
+
+    // 새 이미지 인풋 박스 추가
+    addImageBtn.addEventListener('click', () => {
+      images.push('');
+      renderSettingsList();
+      imageUrlList.scrollTop = imageUrlList.scrollHeight; // 가장 하단으로 자동 스크롤
     });
 
-    // 자동 재생 (3초)
-    let autoplay = setInterval(() => {
-      counter = (counter + 1) % slideImages.length;
-      render();
-    }, 3000);
+    // 저장 버튼 클릭 시 로컬 스토리지에 유지 & 적용
+    saveBtn.addEventListener('click', () => {
+      const inputs = document.querySelectorAll('.image-input');
+      const updatedImages = [];
+      inputs.forEach(input => {
+        const trimmed = input.value.trim();
+        if (trimmed) {
+          updatedImages.push(trimmed);
+        }
+      });
 
-    // 리사이즈 대응
-    window.addEventListener('resize', render);
+      images = updatedImages;
+      localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(images));
 
-    render();
+      // 비율 설정 변경
+      const selectedRatio = aspectRatioSelect.value;
+      localStorage.setItem(STORAGE_KEY_RATIO, selectedRatio);
+      container.style.aspectRatio = selectedRatio.replace('/', ' / ');
+
+      currentIndex = 0;
+      renderCarousel();
+      settingsPanel.classList.add('translate-y-full');
+      resetAutoPlay();
+    });
+
+    // 초기화 버튼 클릭
+    resetBtn.addEventListener('click', () => {
+      if (confirm('모든 커스텀 이미지를 비우고 데모 샘플로 되돌릴까요?')) {
+        images = [...DEFAULT_IMAGES];
+        localStorage.removeItem(STORAGE_KEY_IMAGES);
+        localStorage.removeItem(STORAGE_KEY_RATIO);
+        container.style.aspectRatio = '16 / 9';
+        aspectRatioSelect.value = '16/9';
+        currentIndex = 0;
+        renderCarousel();
+        settingsPanel.classList.add('translate-y-full');
+        resetAutoPlay();
+      }
+    });
+
+    // 키보드 방향키 이동도 지원
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        prevSlide();
+        resetAutoPlay();
+      } else if (e.key === 'ArrowRight') {
+        nextSlide();
+        resetAutoPlay();
+      }
+    });
+
+    // 윈도우 로드 시 작동 시작
+    window.onload = function() {
+      init();
+    }
   </script>
 </body>
 </html>
