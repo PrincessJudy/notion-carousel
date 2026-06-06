@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notion Carousel</title>
+  <style>
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 12px; }
+    .carousel { position: relative; overflow: hidden; border-radius: 12px; background:#111; }
+    .carousel-slide { display: flex; transition: transform .35s ease; }
+    .carousel-slide img { width: 100%; flex: 0 0 100%; object-fit: cover; aspect-ratio: 16/9; }
+    .btn {
+      position:absolute; top:50%; transform: translateY(-50%);
+      border:0; background: rgba(255,255,255,.85); padding:10px 12px;
+      cursor:pointer; border-radius: 999px;
+    }
+    #prevBtn { left:10px; }
+    #nextBtn { right:10px; }
+    .dots { display:flex; gap:6px; justify-content:center; padding:10px 0; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#ccc; opacity:.5; cursor:pointer; }
+    .dot.active { opacity:1; background:#333; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="carousel">
+      <div class="carousel-slide">
+        <img src="IMAGE_URL_1" alt="slide 1">
+        <img src="IMAGE_URL_2" alt="slide 2">
+        <img src="IMAGE_URL_3" alt="slide 3">
+        <img src="IMAGE_URL_4" alt="slide 4">
+        <img src="IMAGE_URL_5" alt="slide 5">
+      </div>
+      <button class="btn" id="prevBtn">‹</button>
+      <button class="btn" id="nextBtn">›</button>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <script>
+    const slideContainer = document.querySelector('.carousel-slide');
+    const slideImages = document.querySelectorAll('.carousel-slide img');
+    const prevBtn = document.querySelector('#prevBtn');
+    const nextBtn = document.querySelector('#nextBtn');
+
+    let counter = 0;
+
+    function getSize() {
+      return slideImages[0].clientWidth;
+    }
+
+    // dots 생성
+    const dotsEl = document.querySelector('#dots');
+    slideImages.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.addEventListener('click', () => goTo(i));
+      dotsEl.appendChild(d);
+    });
+    function updateDots() {
+      [...dotsEl.children].forEach((d, i) => d.classList.toggle('active', i === counter));
+    }
+
+    function render() {
+      const size = getSize();
+      slideContainer.style.transform = 'translateX(' + (-size * counter) + 'px)';
+      updateDots();
+    }
+
+    function goTo(i) {
+      counter = Math.max(0, Math.min(i, slideImages.length - 1));
+      render();
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (counter >= slideImages.length - 1) return;
+      counter++;
+      render();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (counter <= 0) return;
+      counter--;
+      render();
+    });
+
+    // 자동 재생 (3초)
+    let autoplay = setInterval(() => {
+      counter = (counter + 1) % slideImages.length;
+      render();
+    }, 3000);
+
+    // 리사이즈 대응
+    window.addEventListener('resize', render);
+
+    render();
+  </script>
+</body>
+</html>
